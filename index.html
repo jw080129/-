@@ -1,180 +1,73 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <title>물리학Ⅱ 심화 시뮬레이터: 공랭식 냉각 팬의 벡터 해석</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
-    <style> 
-        body { margin: 0; background-color: #0f0f0f; display: flex; justify-content: center; align-items: center; height: 100vh; color: white; font-family: 'Malgun Gothic', sans-serif; overflow: hidden; } 
-        #ui { position: absolute; bottom: 20px; left: 20px; background: rgba(0,0,0,0.85); padding: 15px; border-radius: 10px; border: 1px solid #444; z-index: 10; }
-        .legend { display: flex; align-items: center; margin-bottom: 8px; font-size: 14px; }
-        .dot { width: 12px; height: 12px; border-radius: 50%; margin-right: 10px; }
-    </style>
-</head>
-<body>
-    <div id="ui">
-        <h3 style="margin-top:0; margin-bottom:12px; font-size:16px; color:#fff;">물리Ⅱ 벡터 해석 범례</h3>
-        <div class="legend"><div class="dot" style="background:#5555ff;"></div><span>초기 입자 (저온)</span></div>
-        <div class="legend"><div class="dot" style="background:#ff5555;"></div><span>충돌 입자 (에너지 획득)</span></div>
-        <div class="legend"><div class="dot" style="background:#ffff55;"></div><span><b>→ v_rot</b> (접선 속도 벡터)</span></div>
-        <div class="legend"><div class="dot" style="background:#55ffff;"></div><span><b>→ v_ax</b> (축 방향 속도 벡터)</span></div>
-        <div class="legend"><div class="dot" style="background:#ff55ff;"></div><span><b>→ v_total</b> (최종 합 벡터)</span></div>
-        <p style="margin: 5px 0 0 0; font-size: 11px; color: #aaa;">* [V] 키: 벡터 토글 / [↑][↓] 키: 팬 속도 조절</p>
-    </div>
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 
-<script>
-let particles = [];
-let fanAngle = 0;
-let fanSpeed = 0.04;
-let fanX, fanY, fanRadius = 90;
-let showVectors = true;
+# 1. 시뮬레이션 기본 파라미터 설정
+omega = 2.0  # 각속도 (초당 회전하는 라디안 각도, \omega)
+r_inner = 1.0  # 냉각 팬 안쪽 지점의 반지름
+r_outer = 2.5  # 냉각 팬 바깥쪽 끝 지점의 반지름
 
-function setup() {
-    createCanvas(1000, 700);
-    fanX = width / 4;
-    fanY = height / 2;
-    textSize(14);
-}
+# 2. 그래프 창 및 축 설정
+fig, ax = plt.subplots(figsize=(7, 7))
+ax.set_xlim(-3.5, 3.5)
+ax.set_ylim(-3.5, 3.5)
+ax.set_aspect('equal')
+ax.grid(True, linestyle='--', alpha=0.6)
+ax.set_title("Cooling Fan Blade Vector Simulation ($v = r\\omega$)", fontsize=12)
+ax.set_xlabel("X coordinate")
+ax.set_ylabel("Y coordinate")
 
-function draw() {
-    background(15);
-    
-    // 1. 배경 가이드 및 그리드 그리기
-    stroke(25);
-    strokeWeight(1);
-    for (let x = 0; x < width; x += 50) line(x, 0, x, height);
-    for (let y = 0; y < height; y += 50) line(0, y, width, y);
-    
-    // 서버 본체 윤곽
-    noFill();
-    stroke(60);
-    rect(fanX + fanRadius + 10, fanY - 200, 600, 400, 10);
-    fill(130); noStroke();
-    text("서버 본체 내부 (공기 유동 분석 영역)", fanX + fanRadius + 30, fanY - 175);
+# 팬의 회전 궤적을 보여주기 위한 기본 원 그리기
+circle_in = plt.Circle((0, 0), r_inner, color='gray', fill=False, linestyle=':')
+circle_out = plt.Circle((0, 0), r_outer, color='gray', fill=False, linestyle=':')
+ax.add_patch(circle_in)
+ax.add_patch(circle_out)
 
-    // 2. 입자 생성 조절
-    if (particles.length < 250) {
-        particles.push(new AirParticle());
-    }
-    
-    // 3. 팬 회전 및 회전 날개 렌더링
-    fanAngle += fanSpeed;
-    
-    noFill();
-    stroke(100);
-    strokeWeight(3);
-    ellipse(fanX, fanY, fanRadius * 2 + 10);
-    
-    for (let i = 0; i < 4; i++) {
-        let angle = fanAngle + (i * HALF_PI);
-        let bx = fanX + fanRadius * cos(angle);
-        let by = fanY + fanRadius * sin(angle);
-        
-        stroke(180);
-        strokeWeight(5);
-        line(fanX, fanY, bx, by);
-        
-        fill(255); noStroke();
-        ellipse(bx, by, 6);
-    }
-    
-    fill(120); stroke(40); strokeWeight(2);
-    ellipse(fanX, fanY, 18);
+# 3. 애니메이션 요소 초기화 (날개선, 안쪽 점, 바깥쪽 점)
+blade_line, = ax.plot([], [], color='black', lw=2, label="Fan Blade")
+point_in, = ax.plot([], [], 'bo', ms=8, label=f"Inner Point ($r_1$={r_inner})")
+point_out, = ax.plot([], [], 'ro', ms=8, label=f"Outer Point ($r_2$={r_outer})")
 
-    // 4. 입자 업데이트 및 렌더링
-    for (let i = particles.length - 1; i >= 0; i--) {
-        particles[i].update();
-        particles[i].display();
-        if (!particles[i].active) {
-            particles.splice(i, 1);
-        }
-    }
-}
+# 화살표(벡터) 표시를 위한 초기화
+quiver_in = ax.quiver([], [], [], [], color='blue', scale=1, scale_units='xy', angles='xy')
+quiver_out = ax.quiver([], [], [], [], color='red', scale=1, scale_units='xy', angles='xy')
 
-function drawArrow(base, vec, myColor, label) {
-    push();
-    stroke(myColor);
-    strokeWeight(2);
-    fill(myColor);
-    translate(base.x, base.y);
-    line(0, 0, vec.x, vec.y);
-    let arrowSize = 5;
-    rotate(vec.heading());
-    translate(vec.magnitude() - arrowSize, 0);
-    triangle(0, arrowSize / 2, 0, -arrowSize / 2, arrowSize, 0);
+ax.legend(loc="upper right")
+
+# 4. 시간에 따른 매개변수 위치 및 미분 속도 벡터 업데이트 함수
+def update(frame):
+    t = frame * 0.05  # 프레임당 시간 흐름 (dt)
     
-    if (label) {
-        pop();
-        push();
-        translate(base.x + vec.x + 5, base.y + vec.y + 5);
-        fill(myColor); noStroke();
-        text(label, 0, 0);
-        pop();
-    } else {
-        pop();
-    }
-}
-
-class AirParticle {
-    constructor() {
-        this.pos = createVector(random(fanX - 30, fanX + 30), random(fanY - fanRadius, fanY + fanRadius));
-        this.vel = createVector(random(0.8, 1.8), random(-0.2, 0.2));
-        this.color = color(85, 85, 255);
-        this.active = true;
-        this.collided = false;
-        this.v_rot = createVector(0,0);
-        this.v_ax = createVector(0,0);
-    }
+    # [매개변수 위치 식] x = r * cos(w*t), y = r * sin(w*t)
+    x_in = r_inner * np.cos(omega * t)
+    y_in = r_inner * np.sin(omega * t)
     
-    update() {
-        let dx = this.pos.x - fanX;
-        let dy = this.pos.y - fanY;
-        let distance = sqrt(dx*dx + dy*dy);
-        
-        if (distance < fanRadius + 15 && this.active && !this.collided) {
-            this.collided = true;
-            this.color = color(255, 85, 85);
-
-            // 물리학Ⅱ 원운동 미분을 활용한 접선 속도 벡터 계산
-            this.v_rot = createVector(-dy * fanSpeed * 1.5, dx * fanSpeed * 1.5);
-            // 유체를 밀어내는 축 방향 속도 벡터
-            this.v_ax = createVector(5.0, 0);
-            // 기하 평면벡터의 합성 공식 적용
-            this.vel = p5.Vector.add(this.v_rot, this.v_ax);
-        }
-        
-        this.pos.add(this.vel);
-        
-        if (this.pos.x > width || this.pos.y < 0 || this.pos.y > height) {
-            this.active = false;
-        }
-    }
+    x_out = r_outer * np.cos(omega * t)
+    y_out = r_outer * np.sin(omega * t)
     
-    display() {
-        noStroke();
-        fill(this.color);
-        ellipse(this.pos.x, this.pos.y, 6);
-        
-        if (this.collided && this.pos.x < fanX + fanRadius + 40 && showVectors) {
-            let vScale = 15; 
-            let v_rot_vis = this.v_rot.copy().mult(vScale);
-            let v_ax_vis = this.v_ax.copy().mult(vScale);
-            let v_total_vis = this.vel.copy().mult(vScale);
-            
-            let drawLabel = (random(1) < 0.04); 
-            
-            drawArrow(this.pos, v_rot_vis, color(255, 255, 85, 130), drawLabel ? "v_rot" : null); 
-            drawArrow(this.pos, v_ax_vis, color(85, 255, 255, 130), drawLabel ? "v_ax" : null); 
-            drawArrow(this.pos, v_total_vis, color(255, 85, 255, 180), drawLabel ? "v_total" : null); 
-        }
-    }
-}
+    # [매개변수 미분 식 (순간 속도 벡터)] dx/dt = -r*w*sin(w*t), dy/dt = r*w*cos(w*t)
+    vx_in = -r_inner * omega * np.sin(omega * t)
+    vy_in = r_inner * omega * np.cos(omega * t)
+    
+    vx_out = -r_outer * omega * np.sin(omega * t)
+    vy_out = r_outer * omega * np.cos(omega * t)
+    
+    # 그래프 엘리먼트 데이터 업데이트
+    blade_line.set_data([0, x_out], [0, y_out])
+    point_in.set_data([x_in], [y_in])
+    point_out.set_data([x_out], [y_out])
+    
+    # 화살표(속도 벡터) 업데이트
+    global quiver_in, quiver_out
+    quiver_in.remove()
+    quiver_out.remove()
+    
+    # 점의 현재 위치에서 속도 벡터 방향으로 화살표를 그림
+    quiver_in = ax.quiver(x_in, y_in, vx_in, vy_in, color='blue', scale=1, scale_units='xy', angles='xy', width=0.008)
+    quiver_out = ax.quiver(x_out, y_out, vx_out, vy_out, color='red', scale=1, scale_units='xy', angles='xy', width=0.008)
+    
+    return blade_line, point_in, point_out, quiver_in, quiver_out
 
-function keyPressed() {
-    if (key === 'v' || key === 'V') showVectors = !showVectors;
-    if (keyCode === UP_ARROW) fanSpeed += 0.01;
-    if (keyCode === DOWN_ARROW) fanSpeed = max(0.01, fanSpeed - 0.01);
-}
-</script>
-</body>
-</html>
+# 5. 애니메이션 실행 (200프레임 동안 반복 재생)
+ani = animation.FuncAnimation(fig, update, frames=200, interval=50, blit=True)
+plt.show()
