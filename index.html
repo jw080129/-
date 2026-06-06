@@ -5,20 +5,21 @@
     <title>물리학Ⅱ 심화 시뮬레이터: 공랭식 냉각 팬의 벡터 해석</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
     <style> 
-        body { margin: 0; background-color: #0f0f0f; display: flex; justify-content: center; align-items: center; height: 100vh; color: white; font-family: 'Malgun Gothic', sans-serif; } 
-        #ui { position: absolute; bottom: 20px; left: 20px; background: rgba(0,0,0,0.8); padding: 15px; border-radius: 10px; border: 1px solid #444; }
-        .legend { display: flex; align-items: center; margin-bottom: 8px; }
-        .dot { width: 15px; height: 15px; border-radius: 50%; margin-right: 10px; }
+        body { margin: 0; background-color: #0f0f0f; display: flex; justify-content: center; align-items: center; height: 100vh; color: white; font-family: 'Malgun Gothic', sans-serif; overflow: hidden; } 
+        #ui { position: absolute; bottom: 20px; left: 20px; background: rgba(0,0,0,0.85); padding: 15px; border-radius: 10px; border: 1px solid #444; z-index: 10; }
+        .legend { display: flex; align-items: center; margin-bottom: 8px; font-size: 14px; }
+        .dot { width: 12px; height: 12px; border-radius: 50%; margin-right: 10px; }
     </style>
 </head>
 <body>
     <div id="ui">
-        <h3 style="margin-top:0;">물리Ⅱ 벡터 해석 범례</h3>
+        <h3 style="margin-top:0; margin-bottom:12px; font-size:16px; color:#fff;">물리Ⅱ 벡터 해석 범례</h3>
         <div class="legend"><div class="dot" style="background:#5555ff;"></div><span>초기 입자 (저온)</span></div>
         <div class="legend"><div class="dot" style="background:#ff5555;"></div><span>충돌 입자 (에너지 획득)</span></div>
-        <div class="legend"><div class="dot" style="background:#ffff55;"></div><span><b>→ $\vec{v_{rot}}$</b> (접선 속도 벡터)</span></div>
-        <div class="legend"><div class="dot" style="background:#55ffff;"></div><span><b>→ $\vec{v_{ax}}$</b> (축 방향 속도 벡터)</span></div>
-        <div class="legend"><div class="dot" style="background:#ff55ff;"></div><span><b>→ $\vec{v_{total}}$</b> (최종 합 벡터)</span></div>
+        <div class="legend"><div class="dot" style="background:#ffff55;"></div><span><b>→ v_rot</b> (접선 속도 벡터)</span></div>
+        <div class="legend"><div class="dot" style="background:#55ffff;"></div><span><b>→ v_ax</b> (축 방향 속도 벡터)</span></div>
+        <div class="legend"><div class="dot" style="background:#ff55ff;"></div><span><b>→ v_total</b> (최종 합 벡터)</span></div>
+        <p style="margin: 5px 0 0 0; font-size: 11px; color: #aaa;">* [V] 키: 벡터 토글 / [↑][↓] 키: 팬 속도 조절</p>
     </div>
 
 <script>
@@ -26,7 +27,7 @@ let particles = [];
 let fanAngle = 0;
 let fanSpeed = 0.04;
 let fanX, fanY, fanRadius = 90;
-let showVectors = true; // 벡터 시각화 켜기/끄기
+let showVectors = true;
 
 function setup() {
     createCanvas(1000, 700);
@@ -38,53 +39,49 @@ function setup() {
 function draw() {
     background(15);
     
-    // 1. 배경 가이드 및 그리드 그리기 (물리 시뮬레이션 느낌)
-    stroke(30);
+    // 1. 배경 가이드 및 그리드 그리기
+    stroke(25);
     strokeWeight(1);
     for (let x = 0; x < width; x += 50) line(x, 0, x, height);
     for (let y = 0; y < height; y += 50) line(0, y, width, y);
     
     // 서버 본체 윤곽
     noFill();
-    stroke(80);
+    stroke(60);
     rect(fanX + fanRadius + 10, fanY - 200, 600, 400, 10);
-    fill(100); noStroke();
-    text("서버 본체 내부 (공기 유동 분석 영역)", fanX + fanRadius + 30, fanY - 180);
+    fill(130); noStroke();
+    text("서버 본체 내부 (공기 유동 분석 영역)", fanX + fanRadius + 30, fanY - 175);
 
-    // 2. 입자 생성
-    if (particles.length < 300) {
+    // 2. 입자 생성 조절
+    if (particles.length < 250) {
         particles.push(new AirParticle());
     }
     
-    // 3. 팬 회전 및 그리기 (퀄리티 향상)
+    // 3. 팬 회전 및 회전 날개 렌더링
     fanAngle += fanSpeed;
     
-    // 팬 하우징
     noFill();
-    stroke(120);
+    stroke(100);
     strokeWeight(3);
     ellipse(fanX, fanY, fanRadius * 2 + 10);
     
-    // 회전하는 날개 그리기 (그라데이션 효과)
     for (let i = 0; i < 4; i++) {
         let angle = fanAngle + (i * HALF_PI);
         let bx = fanX + fanRadius * cos(angle);
         let by = fanY + fanRadius * sin(angle);
         
-        stroke(200);
-        strokeWeight(6);
+        stroke(180);
+        strokeWeight(5);
         line(fanX, fanY, bx, by);
         
-        // 날개 끝점 표시
         fill(255); noStroke();
-        ellipse(bx, by, 8);
+        ellipse(bx, by, 6);
     }
     
-    // 팬 중심축
-    fill(150); stroke(50); strokeWeight(2);
-    ellipse(fanX, fanY, 20);
+    fill(120); stroke(40); strokeWeight(2);
+    ellipse(fanX, fanY, 18);
 
-    // 4. 입자 업데이트 및 렌더링 (벡터 시각화 포함)
+    // 4. 입자 업데이트 및 렌더링
     for (let i = particles.length - 1; i >= 0; i--) {
         particles[i].update();
         particles[i].display();
@@ -94,7 +91,6 @@ function draw() {
     }
 }
 
-// 벡터 화살표 그리기 유틸리티 함수
 function drawArrow(base, vec, myColor, label) {
     push();
     stroke(myColor);
@@ -102,12 +98,11 @@ function drawArrow(base, vec, myColor, label) {
     fill(myColor);
     translate(base.x, base.y);
     line(0, 0, vec.x, vec.y);
-    let arrowSize = 6;
+    let arrowSize = 5;
     rotate(vec.heading());
     translate(vec.magnitude() - arrowSize, 0);
     triangle(0, arrowSize / 2, 0, -arrowSize / 2, arrowSize, 0);
     
-    // 벡터 라벨 그리기
     if (label) {
         pop();
         push();
@@ -122,13 +117,11 @@ function drawArrow(base, vec, myColor, label) {
 
 class AirParticle {
     constructor() {
-        this.pos = createVector(random(fanX - 20, fanX + 20), random(fanY - fanRadius, fanY + fanRadius));
-        this.vel = createVector(0, 0);
-        this.color = color(85, 85, 255); // 초기 저온 입자
+        this.pos = createVector(random(fanX - 30, fanX + 30), random(fanY - fanRadius, fanY + fanRadius));
+        this.vel = createVector(random(0.8, 1.8), random(-0.2, 0.2));
+        this.color = color(85, 85, 255);
         this.active = true;
         this.collided = false;
-        
-        // 시각화를 위한 개별 벡터 저장
         this.v_rot = createVector(0,0);
         this.v_ax = createVector(0,0);
     }
@@ -138,67 +131,49 @@ class AirParticle {
         let dy = this.pos.y - fanY;
         let distance = sqrt(dx*dx + dy*dy);
         
-        // 5. 물리학Ⅱ 법칙 적용 (벡터 성분 분해 및 합)
-        if (distance < fanRadius + 15 && this.active) {
+        if (distance < fanRadius + 15 && this.active && !this.collided) {
             this.collided = true;
-            this.color = color(255, 85, 85); // 에너지 획득 시각화 (적색)
+            this.color = color(255, 85, 85);
 
-            // A. 접선 속도 벡터 (매개변수 원운동 미분 모델 적용)
-            // v_rot = (-rω*sin(t), rω*cos(t)) = (-dy*ω, dx*ω)
+            // 물리학Ⅱ 원운동 미분을 활용한 접선 속도 벡터 계산
             this.v_rot = createVector(-dy * fanSpeed * 1.5, dx * fanSpeed * 1.5);
-            
-            // B. 축 방향 속도 벡터 (우측 방향 고정)
-            this.v_ax = createVector(5.5, 0);
-            
-            // C. 기하: 평면벡터의 합 (v = v_rot + v_ax)
+            // 유체를 밀어내는 축 방향 속도 벡터
+            this.v_ax = createVector(5.0, 0);
+            // 기하 평면벡터의 합성 공식 적용
             this.vel = p5.Vector.add(this.v_rot, this.v_ax);
-        } else if (!this.collided) {
-             // 충돌 전에는 느린 초기 속도
-             this.vel = createVector(random(0.5, 1.5), random(-0.2, 0.2));
         }
         
-        // 위치 업데이트 (미소 시간 동안의 변위 누적)
         this.pos.add(this.vel);
         
-        // 화면 경계 소멸
-        if (this.pos.x > width || this.pos.y < 0 || this.pos.y > height) this.active = false;
+        if (this.pos.x > width || this.pos.y < 0 || this.pos.y > height) {
+            this.active = false;
+        }
     }
     
     display() {
-        // 입자 자체 그리기
         noStroke();
         fill(this.color);
-        ellipse(this.pos.x, this.pos.y, 7);
+        ellipse(this.pos.x, this.pos.y, 6);
         
-        // 6. 충돌 순간 벡터 시각화 (퀄리티 핵심)
-        if (this.collided && this.pos.x < fanX + fanRadius + 50 && showVectors) {
-            // 시각화 스케일 튜닝
+        if (this.collided && this.pos.x < fanX + fanRadius + 40 && showVectors) {
             let vScale = 15; 
             let v_rot_vis = this.v_rot.copy().mult(vScale);
             let v_ax_vis = this.v_ax.copy().mult(vScale);
             let v_total_vis = this.vel.copy().mult(vScale);
             
-            // 벡터 화살표들 그리기 (라벨은 일부 입자에만 표시하여 깔끔하게)
-            let drawLabel = (random(1) < 0.05); // 5% 확률로 라벨 표시
+            let drawLabel = (random(1) < 0.04); 
             
-            drawArrow(this.pos, v_rot_vis, color(255, 255, 85, 150), drawLabel ? "v_rot" : null); // 황색
-            drawArrow(this.pos, v_ax_vis, color(85, 255, 255, 150), drawLabel ? "v_ax" : null); // 청색
-            drawArrow(this.pos, v_total_vis, color(255, 85, 255, 200), drawLabel ? "v_total" : null); // 자색
+            drawArrow(this.pos, v_rot_vis, color(255, 255, 85, 130), drawLabel ? "v_rot" : null); 
+            drawArrow(this.pos, v_ax_vis, color(85, 255, 255, 130), drawLabel ? "v_ax" : null); 
+            drawArrow(this.pos, v_total_vis, color(255, 85, 255, 180), drawLabel ? "v_total" : null); 
         }
     }
 }
 
-// 키보드 상호작용 추가 (발표용)
 function keyPressed() {
-    if (key === 'v' || key === 'V') {
-        showVectors = !showVectors; // 'v' 키를 누르면 벡터 시각화 토글
-    }
-    if (keyCode === UP_ARROW) {
-        fanSpeed += 0.01; // 위 화살표: 팬 속도 증가
-    }
-    if (keyCode === DOWN_ARROW) {
-        fanSpeed = max(0.01, fanSpeed - 0.01); // 아래 화살표: 팬 속도 감소
-    }
+    if (key === 'v' || key === 'V') showVectors = !showVectors;
+    if (keyCode === UP_ARROW) fanSpeed += 0.01;
+    if (keyCode === DOWN_ARROW) fanSpeed = max(0.01, fanSpeed - 0.01);
 }
 </script>
 </body>
